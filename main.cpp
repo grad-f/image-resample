@@ -36,8 +36,8 @@ int main()
 	const Extent2D desired_image_extent{ imageExtent.width / 4, imageExtent.height / 4 };
 	std::cout << "desired samples: " << desired_image_extent.width << " x " << desired_image_extent.height << '\n';
 
-	uint32_t delta_x{ imageExtent.width / desired_image_extent.width };
-	uint32_t delta_y{ imageExtent.height / desired_image_extent.height };
+	float delta_x{ static_cast<float>(imageExtent.width) / desired_image_extent.width };
+	float delta_y{ static_cast<float>(imageExtent.height) / desired_image_extent.height };
 
 	std::cout << "delta_x: " << delta_x << '\n';
 	std::cout << "delta_y: " << delta_y << '\n';
@@ -50,10 +50,10 @@ int main()
 	Pixel* resampledImageData{ reinterpret_cast<Pixel*>(resampledImage) };
 
 	for (std::size_t i{ 0 }; i < desired_image_extent.height; ++i) { // row
-		std::size_t _x{ i * delta_x };
-		std::cout << "_x: " << _x << '\n';
+		std::size_t _x{ static_cast<std::size_t>(i * delta_x) };
+		//std::cout << "_x: " << _x << '\n';
 		for (std::size_t j{ 0 }; j < desired_image_extent.width; ++j) { // column
-			std::size_t _y{ j * delta_y };
+			std::size_t _y{ static_cast<std::size_t>(j * delta_y) };
 			resampledImageData[i * desired_image_extent.width + j] = image_data[_x * imageExtent.width + _y];
 		}
 	}
