@@ -12,29 +12,55 @@ struct Pixel {
 	uint8_t r{};
 	uint8_t g{};
 	uint8_t b{};
+	
+	Pixel& operator+=(const Pixel& rhs) {
+		this->r += rhs.r;
+		this->g += rhs.g;
+		this->b += rhs.b;
+		return *this;
+	}
+
+	Pixel& operator/=(const float rhs) {
+		this->r = static_cast<uint8_t>(this->r / rhs);
+		this->g = static_cast<uint8_t>(this->g / rhs);
+		this->b = static_cast<uint8_t>(this->b / rhs);
+		return *this;
+	}
+
 };
+
+Pixel operator*(const Pixel& lhs, const float rhs) {
+	return Pixel{ static_cast<uint8_t>(lhs.r * rhs), static_cast<uint8_t>(lhs.g * rhs), static_cast<uint8_t>(lhs.b * rhs) };
+}
 
 struct Extent2D {
 	uint32_t width{};
 	uint32_t height{};
 };
 
-float mitchell_netravali(float x, [[maybe_unused]]float r) {
+// scale mitchell_netravali filter based on whether we are upsampling or downsampling
+float compute_radius_factor(Extent2D in_image_size, Extent2D out_image_size) {
 
-	float s{ 4.0 };
+	uint32_t in_pixel_count{ in_image_size.width * in_image_size.height };
+	uint32_t out_pixel_count{ out_image_size.width * out_image_size.height };
+	
+	return in_pixel_count <= out_pixel_count ? 1.0f : 3.0f;
+}
 
-	float abs_x{ std::fabs(x) / s };
+float mitchell_netravali(float x, float radiusFactor) {
+
+	float abs_x{ std::fabs(x / radiusFactor)  };
 
 	float B = 1.0f / 3.0f;
 	float C = 1.0f / 3.0f;
 
 	if (abs_x <= 1) {
 		return ((12 - 9 * B - 6 * C) * abs_x * abs_x * abs_x +
-			(-18 + 12 * B + 6 * C) * abs_x * abs_x + (6 - 2 * B)) /	6 / s;
+			(-18 + 12 * B + 6 * C) * abs_x * abs_x + (6 - 2 * B)) /	6 / radiusFactor;
 	}
 	else if ((1 <= abs_x) && (abs_x <= 2)) {
 		return ((-B - 6 * C) * abs_x * abs_x * abs_x + (6 * B + 30 * C) * abs_x * abs_x +
-			(-12 * B - 48 * C) * abs_x + (8 * B + 24 * C)) / 6 / s;
+			(-12 * B - 48 * C) * abs_x + (8 * B + 24 * C)) / 6 / radiusFactor;
 	}
 
 	return 0.0f;
@@ -45,64 +71,68 @@ int main()
 {
 
 	// read image data in
-	int x, y;
-	unsigned char* data{ stbi_load("images/red_panda.jpg", &x, &y, nullptr, STBI_rgb) };
+	int x{}, y{};
+	// load image and reinterpret cast to Pixel* to improve code readability (avoid pointer arithmetic with magic numbers)
+	Pixel* in_image{ reinterpret_cast<Pixel*>(stbi_load("images/red_panda.jpg", &x, &y, nullptr, STBI_rgb)) };
 
-	if (!data) {
+	// check if image load failed
+	if (!in_image) {
 		std::cout << stbi_failure_reason();
 	}
 
-	Pixel* image_data{ reinterpret_cast<Pixel*>(data) };
-	const Extent2D imageExtent{static_cast<uint32_t>(x),static_cast<uint32_t>(y)};
-	const Extent2D desired_image_extent{ imageExtent.width / 4, imageExtent.height / 4 };
-	std::cout << "desired samples: " << desired_image_extent.width << " x " << desired_image_extent.height << '\n';
+	// set input and output image extent
+	float scale_factor{ 1.0f/3.0f };
+	const Extent2D in_image_extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y) };
+	const Extent2D out_image_extent{ static_cast<uint32_t>(in_image_extent.width / (1.0f / scale_factor)), static_cast<uint32_t>(in_image_extent.height / (1.0f /scale_factor))};
+	// compute filter scaling factor
+	float filter_radius_factor{ compute_radius_factor(in_image_extent, out_image_extent) };
 
-	float delta_x{ static_cast<float>(imageExtent.width) / desired_image_extent.width };
-	float delta_y{ static_cast<float>(imageExtent.height) / desired_image_extent.height };
+	Pixel* out_image{ reinterpret_cast<Pixel*>(malloc(out_image_extent.width * out_image_extent.height * sizeof(Pixel))) };
 
-	std::cout << "delta_x: " << delta_x << '\n';
-	std::cout << "delta_y: " << delta_y << '\n';
+	// compute new sample spacing
+	float delta_x{ static_cast<float>(in_image_extent.width) / out_image_extent.width };
+	float delta_y{ static_cast<float>(in_image_extent.height) / out_image_extent.height };
 
-	void* resampledImage{ malloc(desired_image_extent.width * desired_image_extent.height * sizeof(Pixel)) };
-	if (resampledImage == nullptr) {
+	/*	DEBUG	*/
+	{	
+		std::cout << "resampling input image: " << in_image_extent.width << " by " << in_image_extent.height;
+		std::cout << " to " << out_image_extent.width << " by " << out_image_extent.height << '\n';
+		std::cout << "delta_x: " << delta_x << '\n';	std::cout << "delta_y: " << delta_y << '\n';
+	}
+
+	if (out_image == nullptr) {
 		std::cout << "Failed to allocate resample buffer" << '\n';
 		return EXIT_FAILURE;
 	}
-	Pixel* resampledImageData{ reinterpret_cast<Pixel*>(resampledImage) };
 
-	for (std::size_t i{ 0 }; i < desired_image_extent.height; ++i) { // row
-		std::size_t _x{ static_cast<std::size_t>(i * delta_x + delta_x/2) };
+	for (std::size_t i{ 0 }; i < out_image_extent.height; ++i) { // row
+		std::size_t _x{ static_cast<std::size_t>(i * delta_x + delta_x / 2.0f) };
 		//std::cout << "_x: " << _x << '\n';
-		for (std::size_t j{ 0 }; j < desired_image_extent.width; ++j) { // column
-			std::size_t _y{ static_cast<std::size_t>(j * delta_y + delta_y/2) };
+		for (std::size_t j{ 0 }; j < out_image_extent.width; ++j) { // column
+			std::size_t _y{ static_cast<std::size_t>(j * delta_y + delta_y / 2.0f) };
 
-			//resampledImageData[i * desired_image_extent.width + j] = image_data[_x * imageExtent.width + _y];
+			//out_image[i * out_image_extent.width + j] = in_image[_x * in_image_extent.width + _y];
 
 			Pixel pixel{};
-			float normFactor{ 0 };
-
+			float norm_factor{ 0 };
 			for (std::size_t i_prime{ _x - 2 }; i_prime <= _x + 2; ++i_prime) {
 				for (std::size_t j_prime{ _y - 2 }; j_prime <= _y + 2; ++j_prime) {
-					if ((i_prime >= 0 && i_prime < imageExtent.height) && (j_prime >= 0 && j_prime <= imageExtent.width)) {
-						float weight{ mitchell_netravali(_x - static_cast<float>(i_prime), 2) * mitchell_netravali(_y - static_cast<float>(j_prime), 2) };
-						normFactor += weight;
-						pixel.r += static_cast<uint8_t>(image_data[i_prime * imageExtent.width + j_prime].r * weight);
-						pixel.g += static_cast<uint8_t>(image_data[i_prime * imageExtent.width + j_prime].g * weight);
-						pixel.b += static_cast<uint8_t>(image_data[i_prime * imageExtent.width + j_prime].b * weight);
+					if ((i_prime >= 0 && i_prime < in_image_extent.height) && (j_prime >= 0 && j_prime <= in_image_extent.width)) {
+						float weight{ mitchell_netravali(_x - static_cast<float>(i_prime), filter_radius_factor) * mitchell_netravali(_y - static_cast<float>(j_prime), filter_radius_factor) };
+						norm_factor += weight;
+						pixel += in_image[i_prime * in_image_extent.width + j_prime] * weight;
 					}
 				}
 			}
 
-			pixel.r = static_cast<uint8_t>(pixel.r / normFactor);
-			pixel.g = static_cast<uint8_t>(pixel.g / normFactor);
-			pixel.b = static_cast<uint8_t>(pixel.b / normFactor);
-			resampledImageData[i * desired_image_extent.width + j] = pixel;
+			pixel /= norm_factor;
+			out_image[i * out_image_extent.width + j] = pixel;
 		}
 	}
 
-	stbi_write_jpg("red_panda_export.jpg", static_cast<int>(desired_image_extent.width), static_cast<int>(desired_image_extent.height), 3, reinterpret_cast<unsigned char*>(resampledImage), 100);
-	stbi_image_free(data);
-	free(resampledImage);
+	stbi_write_jpg("red_panda_export.jpg", static_cast<int>(out_image_extent.width), static_cast<int>(out_image_extent.height), 3, reinterpret_cast<void*>(out_image), 100);
+	stbi_image_free(reinterpret_cast<void*>(in_image));
+	free(reinterpret_cast<void*>(out_image));
 
 	return 0;
 }
