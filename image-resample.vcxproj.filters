@@ -26,5 +26,8 @@
     <Image Include="images\red_panda.jpg">
       <Filter>images</Filter>
     </Image>
+    <Image Include="images\dead_plant.jpg">
+      <Filter>images</Filter>
+    </Image>
   </ItemGroup>
 </Project>
