@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/red_panda_cubic_upsample_2_times.jpg
+/red_panda_pixel_drop_upsample_2_times.jpg
+/red_panda_cubic.jpg
