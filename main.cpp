@@ -117,12 +117,12 @@ int main()
 			Pixel pixel{};
 			float norm_factor{ 0 };
 			for (int i_prime{ _y - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) { // row
+				float w_0{ mitchell_netravali(_y - static_cast<float>(i_prime), filter_radius) };
 				for (int j_prime{ _x - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {//column
-
 					if ((i_prime >= 0 && i_prime < in_image_extent.height) && (j_prime >= 0 && j_prime < in_image_extent.width)) {
-						float weight{ mitchell_netravali(_y - static_cast<float>(i_prime), filter_radius) * mitchell_netravali(_x - static_cast<float>(j_prime), filter_radius) };
-						norm_factor += weight;
-						pixel += in_image[i_prime * in_image_extent.width + j_prime] * weight;
+						float w_1 { mitchell_netravali(_x - static_cast<float>(j_prime), filter_radius) };
+						norm_factor += w_0 * w_1;
+						pixel += in_image[i_prime * in_image_extent.width + j_prime] * w_0 * w_1;
 					}
 				}
 			}
