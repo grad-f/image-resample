@@ -34,20 +34,20 @@ Pixel operator*(const Pixel& lhs, const float rhs) {
 }
 
 struct Extent2D {
-	uint32_t width{};
-	uint32_t height{};
+	int width{};
+	int height{};
 };
 
 // scale mitchell_netravali filter based on whether we are upsampling or downsampling
-float compute_radius_factor(Extent2D in_image_size, Extent2D out_image_size) {
+int compute_radius(Extent2D in_image_size, Extent2D out_image_size) {
 
-	uint32_t in_pixel_count{ in_image_size.width * in_image_size.height };
-	uint32_t out_pixel_count{ out_image_size.width * out_image_size.height };
+	int in_pixel_count{ in_image_size.width * in_image_size.height };
+	int out_pixel_count{ out_image_size.width * out_image_size.height };
 	
-	return in_pixel_count <= out_pixel_count ? 1.0f : 3.0f;
+	return in_pixel_count <= out_pixel_count ? 1 : 3;
 }
 
-float mitchell_netravali(float x, float radiusFactor) {
+float mitchell_netravali(float x, int radiusFactor) {
 
 	float abs_x{ std::fabs(x / radiusFactor)  };
 
@@ -82,10 +82,11 @@ int main()
 
 	// set input and output image extent
 	float scale_factor{ 1.0f/3.0f };
-	const Extent2D in_image_extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y) };
-	const Extent2D out_image_extent{ static_cast<uint32_t>(in_image_extent.width / (1.0f / scale_factor)), static_cast<uint32_t>(in_image_extent.height / (1.0f /scale_factor))};
-	// compute filter scaling factor
-	float filter_radius_factor{ compute_radius_factor(in_image_extent, out_image_extent) };
+	const Extent2D in_image_extent{ static_cast<int>(x), static_cast<int>(y) };
+	const Extent2D out_image_extent{ static_cast<int>(scale_factor * in_image_extent.width), static_cast<int>(scale_factor * in_image_extent.height)};
+	
+	// compute filter radius
+	int filter_radius{ compute_radius(in_image_extent, out_image_extent) };
 
 	Pixel* out_image{ reinterpret_cast<Pixel*>(malloc(out_image_extent.width * out_image_extent.height * sizeof(Pixel))) };
 
@@ -105,20 +106,21 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	for (std::size_t i{ 0 }; i < out_image_extent.height; ++i) { // row
-		std::size_t _x{ static_cast<std::size_t>(i * delta_x + delta_x / 2.0f) };
+	for (int i{ 0 }; i < out_image_extent.height; ++i) { // row
+		int _y{ static_cast<int>(i * delta_y + delta_y / 2.0f) };
 		//std::cout << "_x: " << _x << '\n';
-		for (std::size_t j{ 0 }; j < out_image_extent.width; ++j) { // column
-			std::size_t _y{ static_cast<std::size_t>(j * delta_y + delta_y / 2.0f) };
+		for (int j{ 0 }; j < out_image_extent.width; ++j) { // column
+			int _x{ static_cast<int>(j * delta_x + delta_x / 2.0f) };
 
-			//out_image[i * out_image_extent.width + j] = in_image[_x * in_image_extent.width + _y];
+			//out_image[i * out_image_extent.width + j] = in_image[_y * in_image_extent.width + _x];
 
 			Pixel pixel{};
 			float norm_factor{ 0 };
-			for (std::size_t i_prime{ _x - 2 }; i_prime <= _x + 2; ++i_prime) {
-				for (std::size_t j_prime{ _y - 2 }; j_prime <= _y + 2; ++j_prime) {
-					if ((i_prime >= 0 && i_prime < in_image_extent.height) && (j_prime >= 0 && j_prime <= in_image_extent.width)) {
-						float weight{ mitchell_netravali(_x - static_cast<float>(i_prime), filter_radius_factor) * mitchell_netravali(_y - static_cast<float>(j_prime), filter_radius_factor) };
+			for (int i_prime{ _y - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) { // row
+				for (int j_prime{ _x - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {//column
+
+					if ((i_prime >= 0 && i_prime < in_image_extent.height) && (j_prime >= 0 && j_prime < in_image_extent.width)) {
+						float weight{ mitchell_netravali(_y - static_cast<float>(i_prime), filter_radius) * mitchell_netravali(_x - static_cast<float>(j_prime), filter_radius) };
 						norm_factor += weight;
 						pixel += in_image[i_prime * in_image_extent.width + j_prime] * weight;
 					}
@@ -130,7 +132,7 @@ int main()
 		}
 	}
 
-	stbi_write_jpg("red_panda_export.jpg", static_cast<int>(out_image_extent.width), static_cast<int>(out_image_extent.height), 3, reinterpret_cast<void*>(out_image), 100);
+	stbi_write_jpg("red_panda_cubic.jpg", static_cast<int>(out_image_extent.width), static_cast<int>(out_image_extent.height), 3, reinterpret_cast<void*>(out_image), 100);
 	stbi_image_free(reinterpret_cast<void*>(in_image));
 	free(reinterpret_cast<void*>(out_image));
 
