@@ -85,7 +85,7 @@ int main()
 	}
 
 	// set input and output image extent
-	float scale_factor{ 0.25f };
+	float scale_factor{ 1.0f/3.0f };
 	const Extent2D in_image_extent{ x, y };
 	const Extent2D out_image_extent{ static_cast<int>(scale_factor * in_image_extent.width), static_cast<int>(scale_factor * in_image_extent.height)};
 	
