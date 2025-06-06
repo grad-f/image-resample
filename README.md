@@ -5,15 +5,10 @@
 A few notes about the implementation:
 <p><ul style="padding-left:20px">
   <li>Separable filters.</li>
-  <li>Two-pass vertical followed by horizontal resampling, array stores intermediate results for each row to avoid redundant computations which saves clock cycles.</li>
+  <li>Two-pass horizontal followed by vertical resampling, array stores intermediate results to avoid redundant computations which saves clock cycles.</li>
   <li>Sets the radius of our convolution depending on whether we are downsampling or upsampling.</li>
 
-<li>By resampling a row at a time using the intermediate buffer, it is more likely that the row of intermediate values remain in higher levels of cache (exploits principles of locality)</li>
-</p></ul>
-
 <p>To go faster, I'd likely next look at using parallel hardware via SIMD intrinsics. I may get around to that, I may not!</p>
-
-
 
 When upsampling, we can afford to use a smaller filter radius because the alias spectra and base spectrum in frequency domain should be far enough apart that they don't mix and introduce artifacts. 
 
@@ -25,4 +20,8 @@ Below is an example of downsampling, shrinking an image to 1/3rd of its original
 
 Pixel Dropping           |  Mitchell-Netravali
 :-------------------------:|:-------------------------:
-![red_panda_pixel_drop](https://github.com/user-attachments/assets/17e10227-7c2b-46b5-af62-08745bc287d9)  |   ![red_panda_cubic](https://github.com/user-attachments/assets/59f57cf5-e322-43a2-a161-096695889199)
+![red_panda_pixel_drop](https://github.com/user-attachments/assets/89fb5e24-f34c-4066-b1c9-5e64490e14c1)  |   ![red_panda_cubic](https://github.com/user-attachments/assets/d80536ce-2530-4213-9739-4419e81136c5)
+
+
+
+
