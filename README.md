@@ -19,7 +19,7 @@ When upsampling, we can afford to use a smaller filter radius because the alias 
 
 In contrast, when downsampling, it is likely that the distance between the alias spectra and base spectrum is not sufficient and they mix. This results in artifacts (aliasing) in high frequency areas like edges. To avoid this, we can remove the high frequencies that are likely to mix by increasing the filter radius. The result is a smoother (blurrier) image but reduced aliasing.
 
-Below is an example of downsampling. The image on the left uses a quick and dirty pixel dropping approach and on the right uses this resampler. Feel free to click on them to get a better look.
+Below is an example of downsampling, shrinking an image to 1/3rd of its original size. The image on the left uses a quick and dirty pixel dropping approach and on the right uses this resampler. Feel free to click on them to get a better look.
 
 
 
