@@ -8,7 +8,7 @@ A few notes about the implementation:
   <li>Two-pass vertical followed by horizontal resampling, array stores intermediate results for each row to avoid redundant computations which saves clock cycles.</li>
   <li>Sets the radius of our convolution depending on whether we are downsampling or upsampling.</li>
 
-<li>By resampling a row at a time using the intermediate, it is more likely that the row of intermediate values remain in higher levels of cache (exploits principles of locality)</li>
+<li>By resampling a row at a time using the intermediate buffer, it is more likely that the row of intermediate values remain in higher levels of cache (exploits principles of locality)</li>
 </p></ul>
 
 <p>To go faster, I'd likely next look at using parallel hardware via SIMD intrinsics. I may get around to that, I may not!</p>
