@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #pragma warning(push, 0)
@@ -154,6 +153,7 @@ int main()
 	stbi_write_jpg("red_panda_cubic.jpg", static_cast<int>(out_image_extent.width), static_cast<int>(out_image_extent.height), 3, reinterpret_cast<void*>(out_image), 100);
 	stbi_image_free(reinterpret_cast<void*>(in_image));
 	free(reinterpret_cast<void*>(out_image));
+	free(reinterpret_cast<void*>(S));
 
 	return 0;
 }
