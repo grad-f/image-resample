@@ -7,8 +7,8 @@ A few notes about the implementation:
   <li>Separable filters.</li>
   <li>Two-pass horizontal followed by vertical resampling, array stores intermediate results to avoid redundant computations which saves clock cycles.</li>
   <li>Sets the radius of our convolution depending on whether we are downsampling or upsampling.</li>
-
-<p>To go faster, I'd likely next look at using parallel hardware via SIMD intrinsics. I may get around to that, I may not!</p>
+  
+<br><p>To go faster, I'd likely next look at using parallel hardware via SIMD intrinsics. I may get around to that, I may not!</p>
 
 When upsampling, we can afford to use a smaller filter radius because the alias spectra and base spectrum in frequency domain should be far enough apart that they don't mix and introduce artifacts. 
 
