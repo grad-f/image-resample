@@ -49,18 +49,23 @@ int compute_radius(Extent2D in_image_size, Extent2D out_image_size) {
 
 float mitchell_netravali(float x, int radiusFactor) {
 
-	float abs_x{ std::fabs(x / radiusFactor)  };
+	//std::cout << x << '\n';
+
+	//avoid artifacts from negative lobes
+	float radius_factor = radiusFactor + 0.1f;
+
+	float abs_x{ std::fabs(x) / radiusFactor };
 
 	float B = 1.0f / 3.0f;
 	float C = 1.0f / 3.0f;
 
 	if (abs_x <= 1) {
 		return ((12 - 9 * B - 6 * C) * abs_x * abs_x * abs_x +
-			(-18 + 12 * B + 6 * C) * abs_x * abs_x + (6 - 2 * B)) /	6 / radiusFactor;
+			(-18 + 12 * B + 6 * C) * abs_x * abs_x + (6 - 2 * B)) /	6 / radius_factor;
 	}
 	else if ((1 <= abs_x) && (abs_x <= 2)) {
 		return ((-B - 6 * C) * abs_x * abs_x * abs_x + (6 * B + 30 * C) * abs_x * abs_x +
-			(-12 * B - 48 * C) * abs_x + (8 * B + 24 * C)) / 6 / radiusFactor;
+			(-12 * B - 48 * C) * abs_x + (8 * B + 24 * C)) / 6 / radius_factor;
 	}
 
 	return 0.0f;
@@ -81,14 +86,20 @@ int main()
 	}
 
 	// set input and output image extent
-	float scale_factor{ 1.0f/3.0f };
-	const Extent2D in_image_extent{ static_cast<int>(x), static_cast<int>(y) };
+	float scale_factor{ 0.25f };
+	const Extent2D in_image_extent{ x, y };
 	const Extent2D out_image_extent{ static_cast<int>(scale_factor * in_image_extent.width), static_cast<int>(scale_factor * in_image_extent.height)};
 	
 	// compute filter radius
 	int filter_radius{ compute_radius(in_image_extent, out_image_extent) };
 
 	Pixel* out_image{ reinterpret_cast<Pixel*>(malloc(out_image_extent.width * out_image_extent.height * sizeof(Pixel))) };
+	Pixel* S{ reinterpret_cast<Pixel*>(malloc(out_image_extent.width * sizeof(Pixel))) };
+
+	if (out_image == nullptr || S == nullptr) {
+		std::cout << "Failed to allocate resample buffer" << '\n';
+		return EXIT_FAILURE;
+	}
 
 	// compute new sample spacing
 	float delta_x{ static_cast<float>(in_image_extent.width) / out_image_extent.width };
@@ -101,34 +112,42 @@ int main()
 		std::cout << "delta_x: " << delta_x << '\n';	std::cout << "delta_y: " << delta_y << '\n';
 	}
 
-	if (out_image == nullptr) {
-		std::cout << "Failed to allocate resample buffer" << '\n';
-		return EXIT_FAILURE;
-	}
+	// for each row in our output, precompute S for that row using the input image
+	for (int i{ 0 }; i < out_image_extent.height; ++i) {
 
-	for (int i{ 0 }; i < out_image_extent.height; ++i) { // row
+		// compute relative y in input image
 		int _y{ static_cast<int>(i * delta_y + delta_y / 2.0f) };
-		//std::cout << "_x: " << _x << '\n';
-		for (int j{ 0 }; j < out_image_extent.width; ++j) { // column
+
+		for (int j{ 0 }; j < out_image_extent.width; ++j) {
+			// compute relative x in input image
 			int _x{ static_cast<int>(j * delta_x + delta_x / 2.0f) };
+			S[j] = Pixel{};
+			out_image[i * out_image_extent.width + j] = Pixel{};
 
-			//out_image[i * out_image_extent.width + j] = in_image[_y * in_image_extent.width + _x];
+			float normalize_factor{ 0.0f };
 
-			Pixel pixel{};
-			float norm_factor{ 0 };
-			for (int i_prime{ _y - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) { // row
-				float w_0{ mitchell_netravali(_y - static_cast<float>(i_prime), filter_radius) };
-				for (int j_prime{ _x - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {//column
-					if ((i_prime >= 0 && i_prime < in_image_extent.height) && (j_prime >= 0 && j_prime < in_image_extent.width)) {
-						float w_1 { mitchell_netravali(_x - static_cast<float>(j_prime), filter_radius) };
-						norm_factor += w_0 * w_1;
-						pixel += in_image[i_prime * in_image_extent.width + j_prime] * w_0 * w_1;
-					}
+			for (int i_prime{ _y - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) {
+				if (i_prime >= 0 && i_prime < in_image_extent.height) {
+					float weight{ mitchell_netravali(static_cast<float>(_y) - i_prime, filter_radius) };
+					normalize_factor += weight;
+					S[j] += in_image[i_prime * in_image_extent.width + _x] * weight;
 				}
 			}
+			S[j] /= normalize_factor;
+		}
+		for (int j{ 0 }; j < out_image_extent.width; ++j) {
 
-			pixel /= norm_factor;
-			out_image[i * out_image_extent.width + j] = pixel;
+			int _x{ static_cast<int>(j * delta_x + delta_x / 2.0f) };
+			float normalize_factor{ 0.0f };
+
+			for (int j_prime{_x - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {
+				if (j_prime >= 0 && j_prime < in_image_extent.width) {
+					float weight{ mitchell_netravali(static_cast<float>(_x) - j_prime, filter_radius) };
+					normalize_factor += weight;
+					out_image[i * out_image_extent.width + j] += S[j] * weight;
+				}
+			}
+			out_image[i * out_image_extent.width + j] /= normalize_factor;
 		}
 	}
 
