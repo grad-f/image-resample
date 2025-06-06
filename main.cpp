@@ -48,9 +48,7 @@ int compute_radius(Extent2D in_image_size, Extent2D out_image_size) {
 
 float mitchell_netravali(float x, int radiusFactor) {
 
-	//std::cout << x << '\n';
-
-	//avoid artifacts from negative lobes
+	//negative lobes
 	float radius_factor = radiusFactor + 0.1f;
 
 	float abs_x{ std::fabs(x) / radiusFactor };
