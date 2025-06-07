@@ -51,7 +51,7 @@ float mitchell_netravali(float x, int radiusFactor) {
 	//negative lobes
 	float radius_factor{ radiusFactor + 0.1f };
 
-	float abs_x{ std::fabs(x) / radiusFactor };
+	float abs_x{ std::fabs(x / radiusFactor) };
 
 	float B = 1.0f / 3.0f;
 	float C = 1.0f / 3.0f;
@@ -111,17 +111,17 @@ int main()
 
 	// horizontal pass
 	for (int i{ 0 }; i < in_image_extent.height; ++i) {
-		//int _y{ static_cast<int>(i * delta_y + delta_y / 2.0f) };
 		for (int j{ 0 }; j < out_image_extent.width; ++j) {
 
 			// relative position in input image
-			int _x{ static_cast<int>(j * delta_x + delta_x / 2.0f) };
+			float _x{ j * delta_x + delta_x / 2.0f };
+			int _x_ceil{ static_cast<int>(std::ceil(_x)) };
 			S[i * out_image_extent.width + j] = Pixel{ 0,0,0 };
 			float normalize_factor{ 0 };
 
-			for (int j_prime{ _x - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {
+			for (int j_prime{ _x_ceil - filter_radius }; j_prime <= _x + filter_radius; ++j_prime) {
 				if (j_prime >= 0 && j_prime < in_image_extent.width) {
-					float weight{ mitchell_netravali(static_cast<float>(_x) - j_prime, filter_radius) };
+					float weight{ mitchell_netravali(_x - j_prime, filter_radius) };
 					S[i * out_image_extent.width + j] += in_image[i * in_image_extent.width + j_prime] * weight;
 					normalize_factor += weight;
 				}
@@ -132,16 +132,17 @@ int main()
 	}
 	//vertical pass
 	for (int i{ 0 }; i < out_image_extent.height; ++i) {
-		int _y{ static_cast<int>(i * delta_y + delta_y / 2.0f) };
+		float _y{ i * delta_y + delta_y / 2.0f };
+		int _y_ceil{ static_cast<int>(std::ceil(_y)) };
 		for (int j{ 0 }; j < out_image_extent.width; ++j) {
 
 			// relative position in input image
  			out_image[i * out_image_extent.width + j] = Pixel{ 0,0,0 };
 			float normalize_factor{ 0 };
 
-			for (int i_prime{ _y - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) {
+			for (int i_prime{ _y_ceil - filter_radius }; i_prime <= _y + filter_radius; ++i_prime) {
 				if (i_prime >= 0 && i_prime < in_image_extent.height) {
-					float weight{ mitchell_netravali(static_cast<float>(_y) - i_prime, filter_radius) };
+					float weight{ mitchell_netravali(_y - i_prime, filter_radius) };
 					out_image[i * out_image_extent.width + j] += S[i_prime * out_image_extent.width + j] * weight;
 					normalize_factor += weight;
 				}
