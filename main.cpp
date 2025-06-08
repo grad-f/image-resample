@@ -80,6 +80,7 @@ int main()
 	// check if image load failed
 	if (!in_image) {
 		std::cout << stbi_failure_reason();
+		return EXIT_FAILURE;
 	}
 
 	// set input and output image extent
