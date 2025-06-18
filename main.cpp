@@ -111,6 +111,7 @@ int main()
 	}
 
 	// horizontal pass
+#pragma omp parallel for
 	for (int i{ 0 }; i < in_image_extent.height; ++i) {
 		for (int j{ 0 }; j < out_image_extent.width; ++j) {
 
@@ -132,6 +133,7 @@ int main()
 		}
 	}
 	//vertical pass
+#pragma omp parallel for
 	for (int i{ 0 }; i < out_image_extent.height; ++i) {
 		float _y{ i * delta_y + delta_y / 2.0f };
 		int _y_ceil{ static_cast<int>(std::ceil(_y)) };
