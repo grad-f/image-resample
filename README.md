@@ -20,5 +20,4 @@ Below is an example of downsampling, shrinking an image to 1/3rd of its original
 
 Pixel Dropping           |  Mitchell-Netravali
 :-------------------------:|:-------------------------:
-![red_panda_pixel_drop](https://github.com/user-attachments/assets/89fb5e24-f34c-4066-b1c9-5e64490e14c1)  | 
-![red_panda_cubic](https://github.com/user-attachments/assets/ba925f51-bbb0-4f77-9891-93591a0dbcb9)
+![red_panda_pixel_drop](https://github.com/user-attachments/assets/89fb5e24-f34c-4066-b1c9-5e64490e14c1)  | ![red_panda_cubic](https://github.com/user-attachments/assets/ba925f51-bbb0-4f77-9891-93591a0dbcb9)
